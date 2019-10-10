@@ -7,8 +7,9 @@ from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
+from queue_datastructure import Queue
 from models import db
-#from models import Person
+Queue=Queue()
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -17,6 +18,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
+
+
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
@@ -28,14 +31,30 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/hello', methods=['POST', 'GET'])
-def handle_person():
+@app.route('/new', methods=['POST'])
+def handle_new():
+    new=request.get_json()
+    if 'name' not in new:
+        return 'falta nombre',400
+    if 'phone' not in new:
+        return 'falta numero',400
+    respuesta=Queue.enqueue(new)
 
-    response_body = {
-        "hello": "world"
-    }
+    return jsonify(respuesta), 200
 
-    return jsonify(response_body), 200
+@app.route('/next', methods=['GET'])
+def handle_next():
+
+    respuesta=Queue.dequeue()
+
+    return jsonify(respuesta), 200
+
+@app.route('/all', methods=['GET'])
+def handle_all():
+
+    respuesta=Queue.get_all()
+
+    return jsonify(respuesta), 200
 
 # this only runs if `$ python src/main.py` is exercuted
 if __name__ == '__main__':
